@@ -1,5 +1,5 @@
 import argparse
-from collections import Counter
+from collections import Counter, defaultdict
 import subprocess
 import sys
 
@@ -12,21 +12,72 @@ def kwargs_or_default(setting_value):
     return dict(required=True)
 
 
+def _extract_num(str, word):
+    if word not in str:
+        return 0
+    return int(str.split(' ' + word)[0].split(' ')[-1])
+
+
 def get_stats(args):
+    authors = defaultdict(Counter)
+    emails = settings.TEAMS[settings.DEFAULT_TEAM]
+    stdout = get_git_stdout(args.path, emails, args.days)
+    lines = stdout.split('\n')[:-1]  # empty line at end
+    lines.reverse()  # pop off back
+    while lines:
+        hash = lines.pop()
+        author = lines.pop()
+        date = lines.pop()
+        subject = lines.pop()
+        _empty = lines.pop()
+        stats_str = lines.pop()
+        files = _extract_num(stats_str, 'file')
+        added = _extract_num(stats_str, 'insertion')
+        deleted = _extract_num(stats_str, 'deletion')
+        authors[author].update(dict(
+            files=files,
+            added=added,
+            deleted=deleted,
+
+        ))
+        print '%s %s %s' % (date[0:10], author, subject)
+
+    if not authors:
+        return
+
+    authors_sorted = sorted(authors.items(), key=lambda x: x[1]['files'], reverse=True)
+    print '\n{: <30} {: >10} {: >15} {: >15}'.format(
+        '=== Totals ===',
+        'Files',
+        'Lines Added',
+        'Lines Deleted',
+    )
+    for email, stats in authors_sorted:
+        print '{: <30} {: >10} {: >15} {: >15}'.format(
+        #print '%s: %s files, %s lines added, %s lines deleted' % (
+            email,
+            stats['files'],
+            stats['added'],
+            stats['deleted'],
+        )
+
+
+
+def get_git_stdout(path, emails, days):
     command = [
         'git',
         '--no-pager',
         'log',
         'origin/master',
         '--since="%s days ago"' % args.days,
-        '--format="%h %ae%n%s"', # short hash, email, new line, subject line
+        '--format=%h%n%ae%n%ai%n%s', # short hash, email, new line, subject line
         '--shortstat',
     ]
-    for email in settings.TEAMS[settings.DEFAULT_TEAM]:
+    for email in emails:
         command.append('--author=%s' % email)  # can have multiple
     p = subprocess.Popen(
         command,
-        cwd='/Users/cseibert/src/server',
+        cwd=path,
         #shell=True,
         close_fds=True,
         stdout=subprocess.PIPE,
@@ -34,7 +85,7 @@ def get_stats(args):
     )
     #p.wait()
     (stdoutdata, stderrdata) = p.communicate()
-    print stdoutdata
+    return stdoutdata
 
 
 if __name__ == '__main__':
@@ -42,6 +93,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='git-stats')
     parser.add_argument('--team', help='Which team from settings to use',
         **kwargs_or_default(settings.DEFAULT_TEAM))
+    parser.add_argument('--path', help='Path to local git repo',
+        **kwargs_or_default(settings.DEFAULT_GIT_PATH))
     parser.add_argument('--days', help='How many days back to go', default=30)
     args = parser.parse_args()
     get_stats(args)
