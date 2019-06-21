@@ -20,7 +20,7 @@ def _extract_num(str, word):
 
 def get_stats(args):
     authors = defaultdict(Counter)
-    emails = settings.TEAMS[settings.DEFAULT_TEAM]
+    emails = settings.TEAMS[args.team]
     stdout = get_git_stdout(args.path, emails, args.days)
     lines = stdout.split('\n')[:-1]  # empty line at end
     lines.reverse()  # pop off back
