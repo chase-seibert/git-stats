@@ -40,13 +40,15 @@ def get_stats(args):
             deleted=deleted,
 
         ))
-        print '%s %s %s' % (date[0:10], author, subject)
+        if not args.just_totals:
+            print '%s %s %s' % (date[0:10], author, subject)
 
     if not authors:
         return
 
     authors_sorted = sorted(authors.items(), key=lambda x: x[1]['files'], reverse=True)
-    print '\n{: <30} {: >10} {: >15} {: >15}'.format(
+    print '{:}{: <30} {: >10} {: >15} {: >15}'.format(
+        '' if args.just_totals else '\n',
         '=== Totals ===',
         'Files',
         'Lines Added',
@@ -85,6 +87,9 @@ def get_git_stdout(path, emails, days):
     )
     #p.wait()
     (stdoutdata, stderrdata) = p.communicate()
+    if stderrdata:
+        print stderrdata
+        sys.exit(1)
     return stdoutdata
 
 
@@ -96,5 +101,6 @@ if __name__ == '__main__':
     parser.add_argument('--path', help='Path to local git repo',
         **kwargs_or_default(settings.DEFAULT_GIT_PATH))
     parser.add_argument('--days', help='How many days back to go', default=30)
+    parser.add_argument('--just-totals', help='Just print the totals', action='store_true')
     args = parser.parse_args()
     get_stats(args)

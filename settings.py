@@ -1,6 +1,6 @@
 TEAMS = {
     'team1': [
-        'foo@example.com',
+        # 'foo@example.com',
     ],
 }
 
