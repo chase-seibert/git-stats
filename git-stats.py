@@ -1,6 +1,7 @@
 import argparse
 import datetime
 from collections import Counter, defaultdict
+from itertools import izip_longest
 import subprocess
 import sys
 
@@ -68,17 +69,26 @@ def get_stats(args):
             stats['added'],
             stats['deleted'],
             stats['files'],
-            get_histogram(author_added_per_day[email], args.days),
+            get_histogram(author_added_per_day[email], args.days, args.buckets),
         )
+
+
+def chunk(iterable, n, fillvalue=None):
+    args = [iter(iterable)] * n
+    return list(izip_longest(*args, fillvalue=fillvalue))
 
 
 def get_histogram(author_added_per_day, num_days, buckets=30):
     start_date = (datetime.datetime.now() - datetime.timedelta(days=num_days)).date()
     histogram = ''
-    # need to account for empty days
-    for day_num in range(num_days):  # TODO buckets
-        current_date = start_date + datetime.timedelta(days=day_num)
-        added = author_added_per_day.get(current_date, 0)
+    # split into X even sized buckets
+    buckets = min(buckets, num_days)  # i.e. 10 days == 10 buckets (not 30)
+    bucket_size = int(round(num_days / (buckets * 1.0)))
+    for days_in_bucket in chunk(range(num_days), bucket_size):
+        added = 0
+        for day_num in days_in_bucket:
+            current_date = start_date + datetime.timedelta(days=day_num)
+            added += author_added_per_day.get(current_date, 0)
         char = '.' if added == 0 else '#'
         color = colorama.Style.DIM + colorama.Fore.WHITE
         if added > 10:
@@ -127,6 +137,7 @@ if __name__ == '__main__':
     parser.add_argument('--path', help='Path to local git repo',
         **kwargs_or_default(settings.DEFAULT_GIT_PATH))
     parser.add_argument('--days', help='How many days back to go', default=30, type=int)
+    parser.add_argument('--buckets', help='How buckets to use for histogram', default=30, type=int)
     parser.add_argument('--just-totals', help='Just print the totals', action='store_true')
     args = parser.parse_args()
     get_stats(args)
