@@ -46,21 +46,21 @@ def get_stats(args):
     if not authors:
         return
 
-    authors_sorted = sorted(authors.items(), key=lambda x: x[1]['files'], reverse=True)
-    print '{:}{: <30} {: >10} {: >15} {: >15}'.format(
+    authors_sorted = sorted(authors.items(), key=lambda x: x[1]['added'], reverse=True)
+    print '{:}{: <30} {: >12} {: >12} {: >12}'.format(
         '' if args.just_totals else '\n',
         '=== Totals ===',
+        'Added',
+        'Deleted',
         'Files',
-        'Lines Added',
-        'Lines Deleted',
     )
     for email, stats in authors_sorted:
-        print '{: <30} {: >10} {: >15} {: >15}'.format(
+        print '{: <30} {: >12} {: >12} {: >12}'.format(
         #print '%s: %s files, %s lines added, %s lines deleted' % (
             email,
-            stats['files'],
             stats['added'],
             stats['deleted'],
+            stats['files'],
         )
 
 
